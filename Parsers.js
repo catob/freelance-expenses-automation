@@ -17,6 +17,21 @@ const MANUAL_PDF_PARSERS = [
     parse: (text) => parseCursorPdf_(text),
   },
   {
+    id: "OpenAIParser",
+    matchesFilename: (name) => {
+      const n = (name || "").toLowerCase();
+      return n.includes("openai") || n.includes("chatgpt") || /^receipt-\d{4}-\d{4}/.test(n);
+    },
+    matchesContent: (text) => {
+      const t = (text || "").toLowerCase();
+      return (
+        (t.includes("openai ireland limited") || t.includes("ar@openai.com")) &&
+        (t.includes("chatgpt plus") || t.includes("amount paid") || t.includes("date paid"))
+      );
+    },
+    parse: (text) => parseOpenAiReceiptPdf_(text),
+  },
+  {
     id: "GetsafeParser",
     matchesFilename: (name) => {
       const n = (name || "").toLowerCase();
@@ -110,6 +125,77 @@ function parseGetsafePdf_(text) {
     periodStart,
     periodEnd,
   };
+}
+
+function parseOpenAiReceiptPdf_(text) {
+  const t = String(text || "")
+    .replace(/\u0000/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const dateMatch = t.match(/Date paid\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+  if (!dateMatch) return null;
+  const datePaid = parseEnglishDateLocal_(dateMatch[1]);
+  if (isNaN(datePaid)) return null;
+
+  // Prefer explicit "Amount paid" field; fallback to "<money> paid on <date>".
+  const amountMatch =
+    t.match(/Amount paid\s*([€$£])\s*([0-9]+(?:[.,][0-9]{2})?)/i) ||
+    t.match(/([€$£])\s*([0-9]+(?:[.,][0-9]{2})?)\s+paid on\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i);
+  if (!amountMatch) return null;
+
+  const currency = symbolToCurrency_(amountMatch[1]) || "";
+  const amount = parseNumber_(amountMatch[2]);
+  if (!currency || amount == null || Number.isNaN(amount)) return null;
+
+  const descMatch = t.match(/(ChatGPT\s+Plus\s+Subscription(?:\s*\(per seat\))?)/i);
+  const description = descMatch ? descMatch[1].replace(/\s+/g, " ").trim() : "ChatGPT subscription";
+
+  let periodStart = datePaid;
+  let periodEnd = "";
+  const periodMatch = t.match(
+    /\b([A-Za-z]{3,9}\s+\d{1,2})(?:,\s*(\d{4}))?\s*[-–]\s*([A-Za-z]{3,9}\s+\d{1,2})(?:,\s*(\d{4}))?/i
+  );
+  if (periodMatch) {
+    const y1 = periodMatch[2] || periodMatch[4] || String(datePaid.getFullYear());
+    const y2 = periodMatch[4] || periodMatch[2] || String(datePaid.getFullYear());
+    const d1 = parseEnglishDateLocal_(`${periodMatch[1]}, ${y1}`);
+    const d2 = parseEnglishDateLocal_(`${periodMatch[3]}, ${y2}`);
+    if (!isNaN(d1)) periodStart = d1;
+    if (!isNaN(d2)) periodEnd = d2;
+  }
+
+  return {
+    vendor: "OpenAI",
+    description,
+    amount,
+    currency,
+    category: "AI Tools",
+    datePaid,
+    periodStart,
+    periodEnd,
+  };
+}
+
+function parseEnglishDateLocal_(s) {
+  const m = String(s || "").match(/([A-Za-z]{3,9})\s+(\d{1,2}),\s*(\d{4})/);
+  if (!m) return new Date(NaN);
+
+  const monthNames = [
+    "january", "february", "march", "april", "may", "june",
+    "july", "august", "september", "october", "november", "december",
+  ];
+  const monthAbbr = monthNames.map(n => n.slice(0, 3));
+  const monthRaw = m[1].toLowerCase();
+  let month = monthNames.indexOf(monthRaw);
+  if (month === -1) month = monthAbbr.indexOf(monthRaw.slice(0, 3));
+  if (month === -1) return new Date(NaN);
+
+  const day = Number(m[2]);
+  const year = Number(m[3]);
+  // Use UTC noon to avoid date shifting when rendered in different timezones.
+  const d = new Date(Date.UTC(year, month, day, 12, 0, 0));
+  return isNaN(d) ? new Date(NaN) : d;
 }
 
 function parseGermanDate_(ddmmyyyy) {
