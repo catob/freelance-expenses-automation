@@ -29,6 +29,10 @@ function importGmailReceipts() {
 
   const query = `label:"${CONFIG.RECEIPTS_LABEL}" -label:"${CONFIG.PROCESSED_LABEL}" has:attachment`;
   const threads = GmailApp.search(query);
+  Logger.log("[import] Query: " + query);
+  Logger.log("[import] Threads found: " + threads.length);
+  let rowsAppended = 0;
+  let filesSaved = 0;
 
   for (const thread of threads) {
     const messages = thread.getMessages();
@@ -56,7 +60,10 @@ function importGmailReceipts() {
 
       const attachments = msg.getAttachments({ includeInlineImages: false });
       const chosen = chooseBestReceiptAttachment(attachments);
-      if (!chosen) continue;
+      if (!chosen) {
+        Logger.log("[import] No attachment selected for: " + subject);
+        continue;
+      }
 
       // Vendor/category via Rules tab (fallbacks)
       const baseText = `${from} ${subject}`;
@@ -72,6 +79,7 @@ function importGmailReceipts() {
       const folder = getOrCreateYearMonthFolder_(year, month);
       const filename = buildFilename(date, vendor, subject, chosen.getName());
       const savedFile = folder.createFile(chosen.copyBlob()).setName(filename);
+      filesSaved++;
 
       sheet.appendRow([
         date, // Date
@@ -89,14 +97,21 @@ function importGmailReceipts() {
         new Date(), // Processed At
         `From: ${from}`, // Notes
       ]);
+      rowsAppended++;
+      Logger.log(
+        `[import] Added row for "${subject}" | amount=${money?.amount ?? ""} ${money?.currency ?? ""} | file=${savedFile.getName()}`,
+      );
 
       importedAnything = true;
     }
 
     if (importedAnything) {
       thread.addLabel(processedLabel);
+      Logger.log("[import] Marked thread as processed.");
     }
   }
+
+  Logger.log(`[import] Done. Rows appended: ${rowsAppended}. Files saved: ${filesSaved}.`);
 }
 
 /* -----------------------------
