@@ -14,6 +14,8 @@
  * - Rules (Match | Vendor | Category)
  */
 
+console.log("PUSH TEST " + new Date().toISOString());
+
 function importGmailReceipts() {
   const processedLabel =
     GmailApp.getUserLabelByName(CONFIG.PROCESSED_LABEL) ||
@@ -39,10 +41,18 @@ function importGmailReceipts() {
       // Generic extractors (scored; NOT first-match)
       const date = extractChargeDate_(msg) || msg.getDate();
       const money = extractAmountCurrency_(msg); // {amount, currency} or null
-      const period = extractPeriod_(msg);        // {start, end} or null
+      const period = extractPeriod_(msg); // {start, end} or null
 
-      const year = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy");
-      const month = Utilities.formatDate(date, Session.getScriptTimeZone(), "MM");
+      const year = Utilities.formatDate(
+        date,
+        Session.getScriptTimeZone(),
+        "yyyy",
+      );
+      const month = Utilities.formatDate(
+        date,
+        Session.getScriptTimeZone(),
+        "MM",
+      );
 
       const attachments = msg.getAttachments({ includeInlineImages: false });
       const chosen = chooseBestReceiptAttachment(attachments);
@@ -53,7 +63,8 @@ function importGmailReceipts() {
       const ruleHit = applyRules_(rules, baseText);
 
       const vendor = ruleHit?.vendor || inferVendor(from, subject);
-      const category = ruleHit?.category || inferCategoryFallback_(vendor, subject);
+      const category =
+        ruleHit?.category || inferCategoryFallback_(vendor, subject);
 
       const periodStart = period?.start || date;
       const periodEnd = period?.end || "";
@@ -63,20 +74,20 @@ function importGmailReceipts() {
       const savedFile = folder.createFile(chosen.copyBlob()).setName(filename);
 
       sheet.appendRow([
-        date,                    // Date
-        Number(year),            // Year
-        month,                   // Month
-        vendor,                  // Vendor
-        subject,                 // Description
-        money?.amount ?? "",     // Amount
-        money?.currency ?? "",   // Currency
-        category ?? "",          // Category
-        periodStart,             // Period Start
-        periodEnd,               // Period End
-        "gmail",                 // Source
-        savedFile.getUrl(),      // Drive URL
-        new Date(),              // Processed At
-        `From: ${from}`,         // Notes
+        date, // Date
+        Number(year), // Year
+        month, // Month
+        vendor, // Vendor
+        subject, // Description
+        money?.amount ?? "", // Amount
+        money?.currency ?? "", // Currency
+        category ?? "", // Category
+        periodStart, // Period Start
+        periodEnd, // Period End
+        "gmail", // Source
+        savedFile.getUrl(), // Drive URL
+        new Date(), // Processed At
+        `From: ${from}`, // Notes
       ]);
 
       importedAnything = true;
@@ -121,7 +132,11 @@ function inferCategoryFallback_(vendor, subject) {
 ------------------------------ */
 
 function buildFilename(date, vendor, subject, originalName) {
-  const d = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const d = Utilities.formatDate(
+    date,
+    Session.getScriptTimeZone(),
+    "yyyy-MM-dd",
+  );
   const base = `${d} - ${vendor} - ${subject} - ${originalName}`;
   return base
     .replace(/[\\\/:*?"<>|]/g, "-")
@@ -141,7 +156,7 @@ function extractPdfText_(file) {
   const doc = Drive.Files.create(
     { name: file.getName(), mimeType: MimeType.GOOGLE_DOCS },
     pdfBlob,
-    { ocr: true } // auto-detect language
+    { ocr: true }, // auto-detect language
   );
 
   const text = DocumentApp.openById(doc.id).getBody().getText();
