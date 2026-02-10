@@ -14,8 +14,6 @@
  * - Rules (Match | Vendor | Category)
  */
 
-console.log("PUSH TEST " + new Date().toISOString());
-
 function importGmailReceipts() {
   const processedLabel =
     GmailApp.getUserLabelByName(CONFIG.PROCESSED_LABEL) ||
@@ -111,7 +109,9 @@ function importGmailReceipts() {
     }
   }
 
-  Logger.log(`[import] Done. Rows appended: ${rowsAppended}. Files saved: ${filesSaved}.`);
+  Logger.log(
+    `[import] Done. Rows appended: ${rowsAppended}. Files saved: ${filesSaved}.`,
+  );
 }
 
 /* -----------------------------
