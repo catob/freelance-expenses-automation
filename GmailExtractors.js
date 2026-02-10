@@ -111,7 +111,7 @@ function extractBestMoneyFromText_(body) {
     return fallback;
   }
 
-  candidates.sort((a, b) => b.score - a.score);
+  candidates.sort((a, b) => (b.score - a.score) || (b.amount - a.amount));
   return { amount: candidates[0].amount, currency: candidates[0].currency };
 }
 
@@ -147,8 +147,9 @@ function extractMoneyCandidatesFromLine_(line, defaultCurrency) {
   while ((m = symRe.exec(l)) !== null) {
     const currency = symbolToCurrency_(m[1]) || defaultCurrency;
     const amount = parseNumber_(m[2]);
+    const contextBoost = scoreMoneyMatchContext_(l, m.index, m[0].length);
     if (currency && amount != null) {
-      found.push({ amount, currency, score });
+      found.push({ amount, currency, score: score + contextBoost });
     }
   }
 
@@ -157,8 +158,9 @@ function extractMoneyCandidatesFromLine_(line, defaultCurrency) {
   while ((m = codeRe1.exec(l)) !== null) {
     const currency = (m[1] || "").toUpperCase();
     const amount = parseNumber_(m[2]);
+    const contextBoost = scoreMoneyMatchContext_(l, m.index, m[0].length);
     if (currency && amount != null) {
-      found.push({ amount, currency, score: score + 5 }); // tiny bump for explicit currency
+      found.push({ amount, currency, score: score + 5 + contextBoost }); // tiny bump for explicit currency
     }
   }
 
@@ -166,8 +168,9 @@ function extractMoneyCandidatesFromLine_(line, defaultCurrency) {
   while ((m = codeRe2.exec(l)) !== null) {
     const amount = parseNumber_(m[1]);
     const currency = (m[2] || "").toUpperCase();
+    const contextBoost = scoreMoneyMatchContext_(l, m.index, m[0].length);
     if (currency && amount != null) {
-      found.push({ amount, currency, score: score + 5 });
+      found.push({ amount, currency, score: score + 5 + contextBoost });
     }
   }
 
@@ -178,8 +181,9 @@ function extractMoneyCandidatesFromLine_(line, defaultCurrency) {
     const hasEuro = /€/.test(l);
     const currency = hasEuro ? "EUR" : (defaultCurrency === "EUR" ? "EUR" : "");
     const amount = parseNumber_(m[1]);
+    const contextBoost = scoreMoneyMatchContext_(l, m.index, m[0].length);
     if (currency && amount != null) {
-      found.push({ amount, currency, score: score + (hasEuro ? 5 : 0) });
+      found.push({ amount, currency, score: score + (hasEuro ? 5 : 0) + contextBoost });
     }
   }
 
@@ -218,6 +222,23 @@ function symbolToCurrency_(sym) {
   if (sym === "€") return "EUR";
   if (sym === "£") return "GBP";
   return "";
+}
+
+function scoreMoneyMatchContext_(line, matchIdx, matchLen) {
+  const l = String(line || "").toLowerCase();
+  const before = l.slice(Math.max(0, matchIdx - 32), matchIdx);
+  const after = l.slice(matchIdx + matchLen, Math.min(l.length, matchIdx + matchLen + 32));
+  const near = `${before} ${after}`;
+
+  let delta = 0;
+
+  // Promote money values clearly tied to payment outcomes.
+  if (/\b(amount paid|you paid|paid|charged|total|due|balance due)\b/.test(before)) delta += 30;
+
+  // Demote line-item components that should not beat the actual charge.
+  if (/\b(subtotal|tax|vat|ust|steuer|price|unit price|per month|qty|quantity|discount|credit|coupon|fee)\b/.test(near)) delta -= 45;
+
+  return delta;
 }
 
 function parseNumber_(raw) {
