@@ -31,3 +31,51 @@ function debugGmailReceiptsScan() {
   Logger.log("Total attachments: " + attCount);
   Logger.log("Chosen attachments: " + chosenCount);
 }
+
+function debugFlyMoneyExtraction(limit) {
+  const max = Number(limit) > 0 ? Number(limit) : 5;
+  const query = `label:"${CONFIG.RECEIPTS_LABEL}" (from:fly.io OR subject:fly.io OR subject:fly)`;
+  Logger.log("Query: " + query);
+
+  const threads = GmailApp.search(query, 0, max);
+  Logger.log("Threads found: " + threads.length);
+
+  let inspected = 0;
+
+  for (const thread of threads) {
+    const messages = thread.getMessages();
+    for (const msg of messages) {
+      const body = msg.getPlainBody() || "";
+      const lines = body.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const defaultCurrency =
+        (body.match(/\bAll amounts are in\s+(USD|EUR|GBP|NOK|SEK|DKK|CHF)\b/i)?.[1] || "").toUpperCase();
+
+      const candidates = [];
+      for (const line of lines) {
+        const cands = extractMoneyCandidatesFromLine_(line, defaultCurrency);
+        for (const c of cands) candidates.push({ ...c, line });
+      }
+
+      candidates.sort((a, b) => (b.score - a.score) || (b.amount - a.amount));
+      const best = candidates[0] || null;
+
+      Logger.log("-----");
+      Logger.log("Subject: " + msg.getSubject());
+      Logger.log("Date: " + msg.getDate());
+      Logger.log("Best: " + (best ? `${best.amount} ${best.currency} (score ${best.score})` : "none"));
+
+      for (let i = 0; i < Math.min(8, candidates.length); i++) {
+        const c = candidates[i];
+        Logger.log(`#${i + 1}: ${c.amount} ${c.currency} (score ${c.score}) | ${c.line}`);
+      }
+
+      inspected++;
+      if (inspected >= max) {
+        Logger.log("Inspected messages: " + inspected);
+        return;
+      }
+    }
+  }
+
+  Logger.log("Inspected messages: " + inspected);
+}
