@@ -1,3 +1,62 @@
+/**
+ * Smoke-tests the PDF parsers with hardcoded sample text.
+ * Run this in the Apps Script editor after any parser changes.
+ * Check View > Logs for PASS/FAIL results.
+ */
+function debugTestParsers() {
+  const tests = [
+    {
+      name: "OpenAI",
+      fn: parseOpenAiReceiptPdf_,
+      text: `Date paid April 1, 2025
+             Amount paid $20.00
+             ChatGPT Plus Subscription
+             Mar 1 - Apr 1, 2025`,
+      expect: { vendor: "OpenAI", amount: 20, currency: "USD", category: "AI Tools" },
+    },
+    {
+      name: "Anthropic",
+      fn: parseAnthropicReceiptPdf_,
+      text: `Date paid March 15, 2025
+             Amount paid $18.00
+             Claude Pro
+             Feb 15 - Mar 15, 2025`,
+      expect: { vendor: "Anthropic", amount: 18, currency: "USD", category: "AI Tools" },
+    },
+    {
+      name: "Cursor",
+      fn: parseCursorPdf_,
+      text: `Date paid March 1, 2025
+             $20.00 paid
+             Feb 1 – Mar 1, 2025
+             Cursor Pro subscription`,
+      expect: { vendor: "Cursor", amount: 20, currency: "USD", category: "Dev Tools" },
+    },
+  ];
+
+  let passed = 0;
+  for (const t of tests) {
+    const result = t.fn(t.text);
+    const failures = [];
+    if (!result) {
+      Logger.log(`FAIL [${t.name}]: returned null`);
+      continue;
+    }
+    for (const [key, expected] of Object.entries(t.expect)) {
+      if (result[key] !== expected) {
+        failures.push(`${key}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(result[key])}`);
+      }
+    }
+    if (failures.length) {
+      Logger.log(`FAIL [${t.name}]: ${failures.join(" | ")}`);
+    } else {
+      Logger.log(`PASS [${t.name}]: vendor=${result.vendor} amount=${result.amount} ${result.currency}`);
+      passed++;
+    }
+  }
+  Logger.log(`Results: ${passed}/${tests.length} passed`);
+}
+
 function debugGmailReceiptsScan() {
   const query = `label:"${CONFIG.RECEIPTS_LABEL}" -label:"${CONFIG.PROCESSED_LABEL}" has:attachment`;
   Logger.log("Query: " + query);
