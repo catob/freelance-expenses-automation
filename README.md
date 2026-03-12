@@ -24,15 +24,18 @@ Also supports importing PDFs that you manually save to Drive (via `importManualP
 
 Create a new Google Sheet with two tabs:
 
-**Expenses** tab — add this header row:
-```
-Date | Year | Month | Vendor | Description | Amount | Currency | Category | Period Start | Period End | Source | Drive URL | Processed At | Notes
-```
+**Expenses** tab — add these column headers (one per cell, starting in A1):
 
-**Rules** tab — add this header row (optional, for custom vendor matching):
-```
-Match | Vendor | Category
-```
+| A | B | C | D | E | F | G | H | I | J | K | L | M | N | O |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Date | Year | Month | Vendor | Description | Amount | Currency | Amount EUR | Category | Period Start | Period End | Source | Drive URL | Processed At | Notes |
+
+**Rules** tab — add these column headers (optional, for custom vendor matching):
+
+| A | B | C |
+|---|---|---|
+| Match | Vendor | Category |
+
 Each row maps a substring (matched against sender + subject) to a vendor name and category.
 
 ### 3. Create the Drive folder
@@ -49,8 +52,9 @@ Enable the **Drive API** under Services (click `+` next to Services, find Drive 
 ### 5. Configure and deploy
 
 ```bash
-# Clone this repo and log in to clasp
-git clone <this-repo>
+# Clone this repo and log in to clasp (opens a browser for Google auth)
+git clone https://github.com/catob/freelance-expenses-automation.git
+cd freelance-expenses-automation
 clasp login
 
 # Copy the example files and fill in your values
@@ -63,7 +67,8 @@ Edit `Config.js` and set your Drive folder ID:
 EXPENSES_ROOT_FOLDER_ID: "YOUR_FOLDER_ID_HERE",
 ```
 
-Edit `.clasp.json` and set your Apps Script project's script ID (from the editor URL).
+Edit `.clasp.json` and set your script ID. You can find it in the Apps Script editor URL:
+`https://script.google.com/home/projects/<SCRIPT_ID>/edit`
 
 Both files are gitignored so your private IDs stay local.
 

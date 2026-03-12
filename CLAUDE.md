@@ -56,7 +56,8 @@ Drive (Expenses/<YYYY>/<MM>/ folders)
 | `Parsers.js` | Registry of vendor-specific PDF parsers (`MANUAL_PDF_PARSERS`) |
 | `Rules.js` | Loads `Match | Vendor | Category` rows from the Rules sheet tab |
 | `ManualImports.js` | Manual PDF import from Drive folders |
-| `Backfill.js` | Fills missing Year/Month/Vendor/Category cells retroactively |
+| `Backfill.js` | Fills missing Year/Month/Vendor/Category cells retroactively; `backfillEurAmounts()` fills missing EUR conversions |
+| `CurrencyConversion.js` | `fetchEurRate_` / `convertToEur_` via Frankfurter API (free, no key) |
 | `DriveFolders.js` | Auto-creates `Expenses/<YYYY>/<MM>` folder structure |
 | `Config.js` | All configuration constants (gitignored — copy from `Config.example.js`) |
 | `Debug.js` | Debug/inspection utilities |
@@ -67,7 +68,7 @@ Drive (Expenses/<YYYY>/<MM>/ folders)
 
 ### Google Sheet Structure
 
-**Expenses tab columns:** Date | Year | Month | Vendor | Description | Amount | Currency | Category | Period Start | Period End | Source | Drive URL | Processed At | Notes
+**Expenses tab columns:** Date | Year | Month | Vendor | Description | Amount | Currency | Amount EUR | Category | Period Start | Period End | Source | Drive URL | Processed At | Notes
 
 **Rules tab columns:** Match | Vendor | Category (substring matched against `sender + subject`)
 

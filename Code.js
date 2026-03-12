@@ -80,6 +80,8 @@ function importGmailReceipts() {
       const savedFile = folder.createFile(chosen.copyBlob()).setName(filename);
       filesSaved++;
 
+      const amountEur = convertToEur_(money?.amount ?? null, money?.currency ?? null, date);
+
       sheet.appendRow([
         date, // Date
         Number(year), // Year
@@ -88,6 +90,7 @@ function importGmailReceipts() {
         subject, // Description
         money?.amount ?? "", // Amount
         money?.currency ?? "", // Currency
+        amountEur ?? "", // Amount EUR
         category ?? "", // Category
         periodStart, // Period Start
         periodEnd, // Period End

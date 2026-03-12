@@ -55,6 +55,8 @@ function importManualPdfReceipts() {
         const year = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy");
         const month = Utilities.formatDate(date, Session.getScriptTimeZone(), "MM");
 
+        const amountEur = convertToEur_(parsed.amount ?? null, parsed.currency ?? null, date);
+
         sheet.appendRow([
           date,                       // Date
           Number(year),               // Year
@@ -63,6 +65,7 @@ function importManualPdfReceipts() {
           parsed.description,         // Description
           parsed.amount ?? "",        // Amount
           parsed.currency ?? "",      // Currency
+          amountEur ?? "",            // Amount EUR
           parsed.category ?? "",      // Category
           parsed.periodStart ?? date, // Period Start
           parsed.periodEnd ?? "",     // Period End
