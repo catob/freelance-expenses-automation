@@ -82,9 +82,25 @@ In Gmail, create a label named `Receipts/Auto`. Apply it to incoming receipt/inv
 
 ### 7. Run it
 
-In the Apps Script editor, run `importGmailReceipts()`. Authorize the permissions when prompted. Check the Logs (`View → Logs`) to confirm it worked.
+The two main functions are:
 
-To run on a schedule, add a time-based trigger: **Triggers → Add Trigger → `importGmailReceipts` → Time-driven → e.g. every hour**.
+- **`importGmailReceipts()`** — scans Gmail for emails tagged `Receipts/Auto`, saves each PDF attachment to Drive, extracts the date/amount/currency, and appends a row to the Expenses sheet. Marks threads as processed so they're never imported twice.
+- **`importManualPdfReceipts()`** — scans your `Expenses/<YYYY>/<MM>/` Drive folders for PDFs you've saved there manually, parses them using the vendor-specific parsers in `Parsers.js`, and appends rows for any not yet in the sheet.
+
+**First run — authorize permissions:**
+
+In the Apps Script editor, select `importGmailReceipts` from the function dropdown and click **Run**. Google will prompt you to authorize the script's access to Gmail, Drive, and Sheets. Check **View → Logs** to confirm it worked.
+
+**Set up triggers to run on a schedule:**
+
+Go to **Triggers** (clock icon in the left sidebar) → **Add Trigger**, then add one trigger per function:
+
+| Function | Suggested frequency |
+|---|---|
+| `importGmailReceipts` | Every hour (or every 30 min) |
+| `importManualPdfReceipts` | Once a day (or on-demand) |
+
+Settings for each trigger: **Event source → Time-driven**, then pick your interval. The functions are safe to run as often as you like — duplicates are skipped automatically.
 
 ## Adding a custom PDF parser
 
