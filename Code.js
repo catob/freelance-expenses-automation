@@ -137,6 +137,7 @@ function inferCategoryFallback_(vendor, subject) {
   if (v.includes("vercel") || s.includes("vercel")) return "Hosting";
   if (v.includes("figma") || s.includes("figma")) return "Design";
   if (v.includes("github") || s.includes("github")) return "Dev Tools";
+  if (v.includes("anthropic") || s.includes("anthropic") || s.includes("claude")) return "AI Tools";
   if (v.includes("1password") || s.includes("1password")) return "Security";
 
   return "Software";
