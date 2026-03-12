@@ -1,0 +1,7 @@
+# Don't push example/template files to Apps Script
+Config.example.js
+.clasp.example.json
+.gitignore
+.claspignore
+CLAUDE.md
+README.md

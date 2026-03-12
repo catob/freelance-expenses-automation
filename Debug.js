@@ -32,9 +32,14 @@ function debugGmailReceiptsScan() {
   Logger.log("Chosen attachments: " + chosenCount);
 }
 
-function debugFlyMoneyExtraction(limit) {
+/**
+ * Inspect money extraction scoring for a specific vendor.
+ * @param {string} vendor - e.g. "fly.io", "github.com"
+ * @param {number} [limit] - max threads to inspect (default 5)
+ */
+function debugMoneyExtraction(vendor, limit) {
   const max = Number(limit) > 0 ? Number(limit) : 5;
-  const query = `label:"${CONFIG.RECEIPTS_LABEL}" (from:fly.io OR subject:fly.io OR subject:fly)`;
+  const query = `label:"${CONFIG.RECEIPTS_LABEL}" (from:${vendor} OR subject:${vendor})`;
   Logger.log("Query: " + query);
 
   const threads = GmailApp.search(query, 0, max);
