@@ -142,7 +142,14 @@ function parseGetsafePdf_(text) {
   };
 }
 
-function parseOpenAiReceiptPdf_(text) {
+/**
+ * Generic parser for Stripe-style receipts (used by OpenAI, Anthropic, and similar).
+ * Looks for "Date paid", "Amount paid" / symbol+amount, and an optional billing period.
+ *
+ * @param {string} text - OCR'd PDF text
+ * @param {{ vendor: string, category: string, descPattern: RegExp, defaultDescription: string }} opts
+ */
+function parseStripeStyleReceiptPdf_(text, { vendor, category, descPattern, defaultDescription }) {
   const t = String(text || "")
     .replace(/\u0000/g, "-")
     .replace(/\s+/g, " ")
@@ -163,8 +170,8 @@ function parseOpenAiReceiptPdf_(text) {
   const amount = parseNumber_(amountMatch[2]);
   if (!currency || amount == null || Number.isNaN(amount)) return null;
 
-  const descMatch = t.match(/(ChatGPT\s+Plus\s+Subscription(?:\s*\(per seat\))?)/i);
-  const description = descMatch ? descMatch[1].replace(/\s+/g, " ").trim() : "ChatGPT subscription";
+  const descMatch = t.match(descPattern);
+  const description = descMatch ? descMatch[1].replace(/\s+/g, " ").trim() : defaultDescription;
 
   let periodStart = datePaid;
   let periodEnd = "";
@@ -180,65 +187,25 @@ function parseOpenAiReceiptPdf_(text) {
     if (!isNaN(d2)) periodEnd = d2;
   }
 
-  return {
+  return { vendor, description, amount, currency, category, datePaid, periodStart, periodEnd };
+}
+
+function parseOpenAiReceiptPdf_(text) {
+  return parseStripeStyleReceiptPdf_(text, {
     vendor: "OpenAI",
-    description,
-    amount,
-    currency,
     category: "AI Tools",
-    datePaid,
-    periodStart,
-    periodEnd,
-  };
+    descPattern: /(ChatGPT\s+Plus\s+Subscription(?:\s*\(per seat\))?)/i,
+    defaultDescription: "ChatGPT subscription",
+  });
 }
 
 function parseAnthropicReceiptPdf_(text) {
-  const t = String(text || "")
-    .replace(/\u0000/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const dateMatch = t.match(/Date paid\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
-  if (!dateMatch) return null;
-  const datePaid = parseEnglishDateLocal_(dateMatch[1]);
-  if (isNaN(datePaid)) return null;
-
-  const amountMatch =
-    t.match(/Amount paid\s*([€$£])\s*([0-9]+(?:[.,][0-9]{2})?)/i) ||
-    t.match(/([€$£])\s*([0-9]+(?:[.,][0-9]{2})?)\s+paid on\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i);
-  if (!amountMatch) return null;
-
-  const currency = symbolToCurrency_(amountMatch[1]) || "";
-  const amount = parseNumber_(amountMatch[2]);
-  if (!currency || amount == null || Number.isNaN(amount)) return null;
-
-  const descMatch = t.match(/(Claude\s+(?:Pro|Team|Max|Code))/i);
-  const description = descMatch ? descMatch[1].replace(/\s+/g, " ").trim() : "Claude subscription";
-
-  let periodStart = datePaid;
-  let periodEnd = "";
-  const periodMatch = t.match(
-    /\b([A-Za-z]{3,9}\s+\d{1,2})(?:,\s*(\d{4}))?\s*[-–]\s*([A-Za-z]{3,9}\s+\d{1,2})(?:,\s*(\d{4}))?/i
-  );
-  if (periodMatch) {
-    const y1 = periodMatch[2] || periodMatch[4] || String(datePaid.getFullYear());
-    const y2 = periodMatch[4] || periodMatch[2] || String(datePaid.getFullYear());
-    const d1 = parseEnglishDateLocal_(`${periodMatch[1]}, ${y1}`);
-    const d2 = parseEnglishDateLocal_(`${periodMatch[3]}, ${y2}`);
-    if (!isNaN(d1)) periodStart = d1;
-    if (!isNaN(d2)) periodEnd = d2;
-  }
-
-  return {
+  return parseStripeStyleReceiptPdf_(text, {
     vendor: "Anthropic",
-    description,
-    amount,
-    currency,
     category: "AI Tools",
-    datePaid,
-    periodStart,
-    periodEnd,
-  };
+    descPattern: /(Claude\s+(?:Pro|Team|Max|Code))/i,
+    defaultDescription: "Claude subscription",
+  });
 }
 
 function parseEnglishDateLocal_(s) {
