@@ -59,6 +59,20 @@ const MANUAL_PDF_PARSERS = [
     parse: (text) => parseAnthropicReceiptPdf_(text),
   },
   {
+    id: "IONOSParser",
+    matchesFilename: (name) => {
+      const n = (name || "").toLowerCase();
+      return n.includes("ionos");
+    },
+    matchesContent: (text) => {
+      const t = (text || "").toLowerCase();
+      return (
+        t.includes("ionos") && (t.includes("invoice") || t.includes("domain"))
+      );
+    },
+    parse: (text) => parseIonosPdf_(text),
+  },
+  {
     id: "TorGuardParser",
     matchesFilename: (name) => {
       const n = (name || "").toLowerCase();
@@ -255,6 +269,50 @@ function parseAnthropicReceiptPdf_(text) {
     descPattern: /(Claude\s+(?:Pro|Team|Max|Code))/i,
     defaultDescription: "Claude subscription",
   });
+}
+
+function parseIonosPdf_(text) {
+  const t = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Invoice date used as datePaid (payment debited by PayPal a few days later, no txn date in PDF)
+  const invoiceDateMatch = t.match(
+    /Invoice Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i,
+  );
+  if (!invoiceDateMatch) return null;
+  const datePaid = parseMdyDate_(invoiceDateMatch[1]);
+  if (!datePaid || isNaN(datePaid)) return null;
+
+  // Total amount due
+  const amountMatch = t.match(/Total amount due\s*\$([0-9]+(?:\.[0-9]{2})?)/i);
+  if (!amountMatch) return null;
+  const amount = Number(amountMatch[1]);
+  if (isNaN(amount) || amount <= 0) return null;
+
+  // Service period and domain name: "01/17/2026-01/16/2027 mariakotti.com"
+  let periodStart = datePaid;
+  let periodEnd = "";
+  let description = "IONOS domain";
+  const periodMatch = t.match(
+    /(\d{1,2}\/\d{1,2}\/\d{4})-(\d{1,2}\/\d{1,2}\/\d{4})\s+([\w.-]+)/i,
+  );
+  if (periodMatch) {
+    periodStart = parseMdyDate_(periodMatch[1]) || datePaid;
+    periodEnd = parseMdyDate_(periodMatch[2]) || "";
+    description = `IONOS domain: ${periodMatch[3]}`;
+  }
+
+  return {
+    vendor: "IONOS",
+    description,
+    amount,
+    currency: "USD",
+    category: "Domain",
+    datePaid,
+    periodStart,
+    periodEnd,
+  };
 }
 
 function parseTorGuardPdf_(text) {

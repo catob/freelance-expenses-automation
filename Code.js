@@ -147,6 +147,7 @@ function inferCategoryFallback_(vendor, subject) {
   if (v.includes("vercel") || s.includes("vercel")) return "Hosting";
   if (v.includes("github") || s.includes("github")) return "Dev Tools";
   if (v.includes("torguard") || s.includes("torguard")) return "Dev Tools";
+  if (v.includes("ionos") || s.includes("ionos")) return "Domain";
   if (
     v.includes("anthropic") ||
     s.includes("anthropic") ||
