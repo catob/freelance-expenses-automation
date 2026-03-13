@@ -80,7 +80,11 @@ function importGmailReceipts() {
       const savedFile = folder.createFile(chosen.copyBlob()).setName(filename);
       filesSaved++;
 
-      const amountEur = convertToEur_(money?.amount ?? null, money?.currency ?? null, date);
+      const amountEur = convertToEur_(
+        money?.amount ?? null,
+        money?.currency ?? null,
+        date,
+      );
 
       sheet.appendRow([
         date, // Date
@@ -141,8 +145,8 @@ function inferCategoryFallback_(vendor, subject) {
 
   if (v.includes("fly") || s.includes("fly")) return "Hosting";
   if (v.includes("vercel") || s.includes("vercel")) return "Hosting";
-  if (v.includes("figma") || s.includes("figma")) return "Design";
   if (v.includes("github") || s.includes("github")) return "Dev Tools";
+  if (v.includes("torguard") || s.includes("torguard")) return "Dev Tools";
   if (
     v.includes("anthropic") ||
     s.includes("anthropic") ||

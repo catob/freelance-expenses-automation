@@ -12,7 +12,11 @@ const MANUAL_PDF_PARSERS = [
     },
     matchesContent: (text) => {
       const t = (text || "").toLowerCase();
-      return t.includes("cursor pro") || t.includes("anysphere") || t.includes("date paid");
+      return (
+        t.includes("cursor pro") ||
+        t.includes("anysphere") ||
+        t.includes("date paid")
+      );
     },
     parse: (text) => parseCursorPdf_(text),
   },
@@ -20,13 +24,19 @@ const MANUAL_PDF_PARSERS = [
     id: "OpenAIParser",
     matchesFilename: (name) => {
       const n = (name || "").toLowerCase();
-      return n.includes("openai") || n.includes("chatgpt") || /^receipt-\d{4}-\d{4}/.test(n);
+      return (
+        n.includes("openai") ||
+        n.includes("chatgpt") ||
+        /^receipt-\d{4}-\d{4}/.test(n)
+      );
     },
     matchesContent: (text) => {
       const t = (text || "").toLowerCase();
       return (
         (t.includes("openai ireland limited") || t.includes("ar@openai.com")) &&
-        (t.includes("chatgpt plus") || t.includes("amount paid") || t.includes("date paid"))
+        (t.includes("chatgpt plus") ||
+          t.includes("amount paid") ||
+          t.includes("date paid"))
       );
     },
     parse: (text) => parseOpenAiReceiptPdf_(text),
@@ -41,10 +51,28 @@ const MANUAL_PDF_PARSERS = [
       const t = (text || "").toLowerCase();
       return (
         (t.includes("anthropic") || t.includes("support@anthropic.com")) &&
-        (t.includes("claude") || t.includes("amount paid") || t.includes("date paid"))
+        (t.includes("claude") ||
+          t.includes("amount paid") ||
+          t.includes("date paid"))
       );
     },
     parse: (text) => parseAnthropicReceiptPdf_(text),
+  },
+  {
+    id: "TorGuardParser",
+    matchesFilename: (name) => {
+      const n = (name || "").toLowerCase();
+      return n.includes("torguard") || n.includes("vpnetworks");
+    },
+    matchesContent: (text) => {
+      const t = (text || "").toLowerCase();
+      return (
+        t.includes("vpnetworks") ||
+        t.includes("torguard") ||
+        t.includes("anonymous vpn")
+      );
+    },
+    parse: (text) => parseTorGuardPdf_(text),
   },
   {
     id: "GetsafeParser",
@@ -86,7 +114,9 @@ function parseCursorPdf_(text) {
   if (!amountMatch) return null;
   const amount = Number(amountMatch[1]);
 
-  const periodMatch = t.match(/([A-Za-z]{3}\s+\d{1,2})\s+–\s+([A-Za-z]{3}\s+\d{1,2},\s+\d{4})/);
+  const periodMatch = t.match(
+    /([A-Za-z]{3}\s+\d{1,2})\s+–\s+([A-Za-z]{3}\s+\d{1,2},\s+\d{4})/,
+  );
   let periodStart = datePaid;
   let periodEnd = "";
 
@@ -114,7 +144,7 @@ function parseGetsafePdf_(text) {
   const product = productMatch ? productMatch[1] : "Versicherung";
 
   const rowMatch = t.match(
-    /Zahlbetrag\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\.\d{2}\.\d{4})\s*-\s*(\d{2}\.\d{2}\.\d{4}).*?([0-9]+,[0-9]{2})€\s+([0-9]+,[0-9]{2})€\s+([0-9]+,[0-9]{2})€/i
+    /Zahlbetrag\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\.\d{2}\.\d{4})\s*-\s*(\d{2}\.\d{2}\.\d{4}).*?([0-9]+,[0-9]{2})€\s+([0-9]+,[0-9]{2})€\s+([0-9]+,[0-9]{2})€/i,
   );
   if (!rowMatch) return null;
 
@@ -128,7 +158,8 @@ function parseGetsafePdf_(text) {
   const periodEnd = parseGermanDate_(periodEndStr);
   const amount = Number(zahlbetragStr.replace(",", "."));
 
-  if (!datePaid || !periodStart || !periodEnd || Number.isNaN(amount)) return null;
+  if (!datePaid || !periodStart || !periodEnd || Number.isNaN(amount))
+    return null;
 
   return {
     vendor: "Getsafe",
@@ -149,7 +180,10 @@ function parseGetsafePdf_(text) {
  * @param {string} text - OCR'd PDF text
  * @param {{ vendor: string, category: string, descPattern: RegExp, defaultDescription: string }} opts
  */
-function parseStripeStyleReceiptPdf_(text, { vendor, category, descPattern, defaultDescription }) {
+function parseStripeStyleReceiptPdf_(
+  text,
+  { vendor, category, descPattern, defaultDescription },
+) {
   const t = String(text || "")
     .replace(/\u0000/g, "-")
     .replace(/\s+/g, " ")
@@ -163,7 +197,9 @@ function parseStripeStyleReceiptPdf_(text, { vendor, category, descPattern, defa
   // Prefer explicit "Amount paid" field; fallback to "<money> paid on <date>".
   const amountMatch =
     t.match(/Amount paid\s*([€$£])\s*([0-9]+(?:[.,][0-9]{2})?)/i) ||
-    t.match(/([€$£])\s*([0-9]+(?:[.,][0-9]{2})?)\s+paid on\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i);
+    t.match(
+      /([€$£])\s*([0-9]+(?:[.,][0-9]{2})?)\s+paid on\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i,
+    );
   if (!amountMatch) return null;
 
   const currency = symbolToCurrency_(amountMatch[1]) || "";
@@ -171,23 +207,36 @@ function parseStripeStyleReceiptPdf_(text, { vendor, category, descPattern, defa
   if (!currency || amount == null || Number.isNaN(amount)) return null;
 
   const descMatch = t.match(descPattern);
-  const description = descMatch ? descMatch[1].replace(/\s+/g, " ").trim() : defaultDescription;
+  const description = descMatch
+    ? descMatch[1].replace(/\s+/g, " ").trim()
+    : defaultDescription;
 
   let periodStart = datePaid;
   let periodEnd = "";
   const periodMatch = t.match(
-    /\b([A-Za-z]{3,9}\s+\d{1,2})(?:,\s*(\d{4}))?\s*[-–]\s*([A-Za-z]{3,9}\s+\d{1,2})(?:,\s*(\d{4}))?/i
+    /\b([A-Za-z]{3,9}\s+\d{1,2})(?:,\s*(\d{4}))?\s*[-–]\s*([A-Za-z]{3,9}\s+\d{1,2})(?:,\s*(\d{4}))?/i,
   );
   if (periodMatch) {
-    const y1 = periodMatch[2] || periodMatch[4] || String(datePaid.getFullYear());
-    const y2 = periodMatch[4] || periodMatch[2] || String(datePaid.getFullYear());
+    const y1 =
+      periodMatch[2] || periodMatch[4] || String(datePaid.getFullYear());
+    const y2 =
+      periodMatch[4] || periodMatch[2] || String(datePaid.getFullYear());
     const d1 = parseEnglishDateLocal_(`${periodMatch[1]}, ${y1}`);
     const d2 = parseEnglishDateLocal_(`${periodMatch[3]}, ${y2}`);
     if (!isNaN(d1)) periodStart = d1;
     if (!isNaN(d2)) periodEnd = d2;
   }
 
-  return { vendor, description, amount, currency, category, datePaid, periodStart, periodEnd };
+  return {
+    vendor,
+    description,
+    amount,
+    currency,
+    category,
+    datePaid,
+    periodStart,
+    periodEnd,
+  };
 }
 
 function parseOpenAiReceiptPdf_(text) {
@@ -208,15 +257,75 @@ function parseAnthropicReceiptPdf_(text) {
   });
 }
 
+function parseTorGuardPdf_(text) {
+  const t = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Date paid: first date in the Transactions table row (MM/DD/YYYY before "Credit Card")
+  const txnDateMatch = t.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s+Credit Card/i);
+  if (!txnDateMatch) return null;
+  const datePaid = parseMdyDate_(txnDateMatch[1]);
+  if (!datePaid || isNaN(datePaid)) return null;
+
+  // Total after discounts: "Total $15.00USD"
+  const amountMatch = t.match(/\bTotal\s+\$([0-9]+\.[0-9]{2})USD/i);
+  if (!amountMatch) return null;
+  const amount = Number(amountMatch[1]);
+  if (isNaN(amount) || amount <= 0) return null;
+
+  // Billing period from description line: "Anonymous VPN (11/10/2025 - 05/09/2026)"
+  let periodStart = datePaid;
+  let periodEnd = "";
+  const periodMatch = t.match(
+    /Anonymous VPN\s*\((\d{1,2}\/\d{1,2}\/\d{4})\s*-\s*(\d{1,2}\/\d{1,2}\/\d{4})\)/i,
+  );
+  if (periodMatch) {
+    periodStart = parseMdyDate_(periodMatch[1]) || datePaid;
+    periodEnd = parseMdyDate_(periodMatch[2]) || "";
+  }
+
+  return {
+    vendor: "TorGuard",
+    description: "TorGuard VPN subscription",
+    amount,
+    currency: "USD",
+    category: "Dev Tools",
+    datePaid,
+    periodStart,
+    periodEnd,
+  };
+}
+
+/** Parse MM/DD/YYYY date strings (US format used by TorGuard invoices). */
+function parseMdyDate_(s) {
+  const m = String(s || "").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return null;
+  const d = new Date(
+    Date.UTC(Number(m[3]), Number(m[1]) - 1, Number(m[2]), 12, 0, 0),
+  );
+  return isNaN(d) ? null : d;
+}
+
 function parseEnglishDateLocal_(s) {
   const m = String(s || "").match(/([A-Za-z]{3,9})\s+(\d{1,2}),\s*(\d{4})/);
   if (!m) return new Date(NaN);
 
   const monthNames = [
-    "january", "february", "march", "april", "may", "june",
-    "july", "august", "september", "october", "november", "december",
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
   ];
-  const monthAbbr = monthNames.map(n => n.slice(0, 3));
+  const monthAbbr = monthNames.map((n) => n.slice(0, 3));
   const monthRaw = m[1].toLowerCase();
   let month = monthNames.indexOf(monthRaw);
   if (month === -1) month = monthAbbr.indexOf(monthRaw.slice(0, 3));
