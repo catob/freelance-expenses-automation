@@ -76,7 +76,10 @@ function importManualPdfReceipts() {
         ]);
 
         existingFileIds.add(file.getId());
+        Logger.log(`[manual] Imported: ${filename}`);
       }
     }
   }
+
+  refreshOverview();
 }

@@ -116,6 +116,8 @@ function importGmailReceipts() {
   Logger.log(
     `[import] Done. Rows appended: ${rowsAppended}. Files saved: ${filesSaved}.`,
   );
+
+  if (rowsAppended > 0) refreshOverview();
 }
 
 /* -----------------------------

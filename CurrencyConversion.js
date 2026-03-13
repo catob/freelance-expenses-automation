@@ -23,7 +23,9 @@ function fetchEurRate_(currency, date) {
   try {
     const resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     if (resp.getResponseCode() !== 200) {
-      Logger.log(`[currency] Rate fetch failed for ${code} on ${dateStr}: HTTP ${resp.getResponseCode()}`);
+      Logger.log(
+        `[currency] Rate fetch failed for ${code} on ${dateStr}: HTTP ${resp.getResponseCode()}`,
+      );
       return null;
     }
     const data = JSON.parse(resp.getContentText());
